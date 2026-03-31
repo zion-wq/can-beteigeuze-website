@@ -1,0 +1,4 @@
+# Netlify redirects
+/          /en/    302
+/nl        /nl/    301
+/en        /en/    301

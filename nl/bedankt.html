@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bedankt | Can Beteigeuze</title>
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
+    gtag('consent','default',{analytics_storage:'denied'});gtag('js',new Date());
+    gtag('config','G-XXXXXXXXXX',{send_page_view:false});
+    if(localStorage.getItem('cookie-accepted')==='1'){gtag('consent','update',{analytics_storage:'granted'});}
+    gtag('event','page_view');
+    gtag('event','formulier_verzonden');
+  </script>
+  <link rel="stylesheet" href="../css/style.css?v=2">
+
+  <!-- Meta Pixel -->
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    if (localStorage.getItem('cookie-accepted') === '1') {
+      fbq('init', '1252262680439738');
+      fbq('track', 'PageView');
+    }
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=1252262680439738&ev=PageView&noscript=1"/></noscript>
+  <script>
+
+    if (localStorage.getItem('cookie-accepted') === '1') {
+      fbq('track', 'Lead');
+    }
+  </script>
+</head>
+<body>
+<nav class="nav" style="background:rgba(26,26,26,0.96);">
+  <div class="container nav__inner">
+    <a href="index.html" class="nav__logo">Can Beteigeuze</a>
+  </div>
+</nav>
+<main>
+  <section class="bedankt">
+    <div class="container">
+      <div class="bedankt__inner">
+        <div class="bedankt__icon" aria-hidden="true">✉️</div>
+        <h1>Bedankt!</h1>
+        <p>Uw aanvraag is ontvangen. We nemen binnen 24 uur contact met u op met beschikbaarheidsbevestiging en verdere details.</p>
+        <p>In de tussentijd kunt u gerust de foto's bekijken of meer lezen over de omgeving van Cala Vadella.</p>
+        <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+          <a href="index.html" class="btn btn--primary">Terug naar home</a>
+          <a href="fotos.html" class="btn btn--outline-dark">Bekijk foto's</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<script src="../js/main.js" defer></script>
+</body>
+</html>

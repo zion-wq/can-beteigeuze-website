@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Map Preview</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="../css/leaflet.css"/>
+<script src="../js/lib/leaflet.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #F7F4EF; font-family: 'Inter', system-ui, sans-serif; padding: 2rem; }
+  .map-wrap {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    max-width: 1000px;
+    margin: 0 auto;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  }
+  #map {
+    height: 560px;
+    width: 100%;
+    /* Warm tone filter to match site palette */
+    filter: sepia(18%) saturate(0.85) brightness(1.04) contrast(0.96);
+  }
+  /* Override Leaflet popup to match site */
+  .leaflet-popup-content-wrapper {
+    border-radius: 6px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    border: none;
+  }
+  .leaflet-popup-content { margin: 10px 14px; }
+  .popup-name { font-weight: 700; font-size: 13px; color: #262218; margin-bottom: 2px; }
+  .popup-dist { font-size: 11px; color: #B8965A; font-weight: 600; }
+  .popup-desc { font-size: 11px; color: #6B6B6B; margin-top: 4px; line-height: 1.5; }
+  .leaflet-popup-tip { background: white; }
+
+  /* Map legend */
+  .map-legend {
+    position: absolute;
+    bottom: 28px;
+    left: 14px;
+    background: rgba(255,252,246,0.92);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 11px;
+    z-index: 500;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    line-height: 1.8;
+    pointer-events: none;
+  }
+  .map-legend strong { display: block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: #8A7052; margin-bottom: 6px; }
+  .legend-row { display: flex; align-items: center; gap: 7px; color: #262218; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+</style>
+
+  <!-- Meta Pixel -->
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    if (localStorage.getItem('cookie-accepted') === '1') {
+      fbq('init', '1252262680439738');
+      fbq('track', 'PageView');
+    }
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=1252262680439738&ev=PageView&noscript=1"/></noscript>
+</head>
+<body>
+<div class="map-wrap">
+  <div id="map"></div>
+  <div class="map-legend">
+    <strong>Can Beteigeuze</strong>
+    <div class="legend-row"><span class="legend-dot" style="background:#B8965A;border:2px solid #8A6530;"></span> Villa</div>
+    <div class="legend-row"><span class="legend-dot" style="background:#4A6741;"></span> Beach</div>
+    <div class="legend-row"><span class="legend-dot" style="background:#9A7A44;"></span> Beach club</div>
+    <div class="legend-row"><span class="legend-dot" style="background:#262218;"></span> Town / Airport</div>
+  </div>
+</div>
+
+<script>
+// Init map centred on Ibiza
+const map = L.map('map', {
+  center: [38.968, 1.37],
+  zoom: 11,
+  zoomControl: true,
+  scrollWheelZoom: false,
+  attributionControl: true
+});
+
+// CartoDB Positron — clean, minimal, light tiles
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+// Custom marker factory
+function makeIcon(color, size, border) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width:${size}px; height:${size}px;
+      background:${color};
+      border-radius:50%;
+      border:2px solid ${border};
+      box-shadow:0 2px 6px rgba(0,0,0,0.25);
+    "></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size/2, size/2],
+    popupAnchor: [0, -size/2 - 2]
+  });
+}
+
+// Villa marker — larger, gold ring
+const villaIcon = L.divIcon({
+  className: '',
+  html: `<div style="
+    width:22px; height:22px;
+    background:#B8965A;
+    border-radius:50%;
+    border:3px solid #F5EDD8;
+    box-shadow:0 0 0 2px #B8965A, 0 3px 10px rgba(0,0,0,0.3);
+  "></div>`,
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+  popupAnchor: [0, -14]
+});
+
+const beachIcon  = makeIcon('#4A6741', 12, '#2E4228');
+const clubIcon   = makeIcon('#9A7A44', 12, '#6A5A24');
+const townIcon   = makeIcon('#262218', 12, '#000');
+const airportIcon = makeIcon('#4A5245', 12, '#2A302A');
+
+// Locations
+const locations = [
+  {
+    coords: [38.878, 1.236], icon: villaIcon,
+    name: 'Can Beteigeuze', dist: 'Your villa — Cala Vadella',
+    desc: '10 min walk to the beach. Panoramic sea views, complete privacy.'
+  },
+  {
+    coords: [38.872, 1.228], icon: beachIcon,
+    name: 'Cala Vadella', dist: '10 min walk',
+    desc: 'Sheltered horseshoe bay. Calm water, fine sand, beach bar. Child-friendly.'
+  },
+  {
+    coords: [38.872, 1.224], icon: beachIcon,
+    name: "Cala d'Hort", dist: '10 min drive',
+    desc: 'Wild bay with direct view of Es Vedrà. The most dramatic beach in the southwest.'
+  },
+  {
+    coords: [38.935, 1.197], icon: beachIcon,
+    name: 'Cala Conta', dist: '20 min drive',
+    desc: 'Crystal-clear water, multiple small coves. Best sunset beach on the island.'
+  },
+  {
+    coords: [38.975, 1.292], icon: beachIcon,
+    name: 'Cala Gracioneta', dist: '20 min drive',
+    desc: 'Small, intimate cove near Sant Antoni. Lovely beach restaurant.'
+  },
+  {
+    coords: [38.943, 1.234], icon: clubIcon,
+    name: 'Cotton Beach Club', dist: '15 min drive',
+    desc: 'Stylish beach club at Cala Tarida. Loungers, cocktails, Mediterranean food.'
+  },
+  {
+    coords: [38.867, 1.244], icon: clubIcon,
+    name: 'Chiringuito de Jondal', dist: '10 min drive',
+    desc: 'Iconic beach club at Cala Jondal. The classic Ibiza beach experience.'
+  },
+  {
+    coords: [38.918, 1.457], icon: clubIcon,
+    name: 'Jockey Club', dist: '25 min drive',
+    desc: 'Elegant beach club at Talamanca. Great food, relaxed atmosphere.'
+  },
+  {
+    coords: [38.915, 1.233], icon: townIcon,
+    name: 'San José', dist: '10 min drive',
+    desc: 'The nearest village. Supermarket, restaurants, weekly market.'
+  },
+  {
+    coords: [38.979, 1.301], icon: townIcon,
+    name: 'Sant Antoni', dist: '20 min drive',
+    desc: 'Lively town on the west coast. Sunset strip, restaurants, nightlife.'
+  },
+  {
+    coords: [38.909, 1.432], icon: townIcon,
+    name: 'Ibiza Town', dist: '25 min drive',
+    desc: 'UNESCO-listed Dalt Vila. Walk the ramparts at sunset.'
+  },
+  {
+    coords: [38.984, 1.536], icon: townIcon,
+    name: 'Santa Eulària', dist: '35 min drive',
+    desc: 'The most relaxed town. Promenade, harbour, excellent fish restaurants.'
+  },
+  {
+    coords: [38.873, 1.373], icon: airportIcon,
+    name: '✈ Ibiza Airport', dist: '25 min drive',
+    desc: 'Direct flights from most European cities.'
+  }
+];
+
+locations.forEach(loc => {
+  L.marker(loc.coords, { icon: loc.icon })
+    .addTo(map)
+    .bindPopup(`
+      <div class="popup-name">${loc.name}</div>
+      <div class="popup-dist">${loc.dist}</div>
+      ${loc.desc ? `<div class="popup-desc">${loc.desc}</div>` : ''}
+    `);
+});
+
+// Open villa popup by default
+L.marker([38.878, 1.236], { icon: villaIcon })
+  .addTo(map);
+</script>
+</body>
+</html>
