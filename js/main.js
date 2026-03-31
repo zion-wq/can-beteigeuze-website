@@ -229,7 +229,7 @@ document.querySelector('.cookie-accept')?.addEventListener('click', () => {
   }
   // Enable Meta Pixel after consent
   if (typeof fbq === 'function') {
-    fbq('consent', 'grant');
+    fbq('init', '1252262680439738');
     fbq('track', 'PageView');
   }
 });
