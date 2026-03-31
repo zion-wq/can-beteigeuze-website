@@ -227,6 +227,11 @@ document.querySelector('.cookie-accept')?.addEventListener('click', () => {
   if (typeof gtag === 'function') {
     gtag('consent', 'update', { analytics_storage: 'granted' });
   }
+  // Enable Meta Pixel after consent
+  if (typeof fbq === 'function') {
+    fbq('consent', 'grant');
+    fbq('track', 'PageView');
+  }
 });
 document.querySelector('.cookie-decline')?.addEventListener('click', () => {
   localStorage.setItem('cookie-accepted', '0');
