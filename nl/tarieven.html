@@ -156,7 +156,8 @@
             <span><span style="display:inline-block;width:14px;height:14px;background:#eeebe6;border-radius:3px;vertical-align:middle;margin-right:5px;"></span>Verleden</span>
           </div>
           <p id="cal-status" style="margin-top:0.75rem;font-size:0.85rem;color:var(--grijs);"></p>
-          <p style="margin-top:1.25rem;font-size:0.88rem;color:var(--grijs);line-height:1.6;">Wil je deze data boeken? Scroll naar beneden voor opties.</p>
+          <p id="cal-hint" style="margin-top:0.75rem;font-size:0.85rem;color:var(--grijs);">Klik op een beschikbare datum om je aankomst te selecteren.</p>
+          <div id="cal-selection-strip" style="display:none;margin-top:1rem;padding:1rem 1.25rem;background:var(--zandgoud);border-radius:0.5rem;border:1px solid rgba(184,150,90,0.3);"></div>
         </div>
       </div>
 
@@ -166,138 +167,140 @@
 
 <script>
 (function() {
-  const MONTHS = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
-  const DAYS = ['Ma','Di','Wo','Do','Vr','Za','Zo'];
-  let bookedRanges = [];
-  let currentMonth = new Date().getMonth();
-  let currentYear = new Date().getFullYear();
+  var MONTHS = ['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
+  var DAYS   = ['Ma','Di','Wo','Do','Vr','Za','Zo'];
+  var bookedRanges = [];
+  var currentMonth = new Date().getMonth();
+  var currentYear  = new Date().getFullYear();
+  var selCheckin   = null;
+  var selCheckout  = null;
 
   function parseIcal(text) {
-    const ranges = [];
-    const events = text.split('BEGIN:VEVENT');
-    events.shift();
-    for (const ev of events) {
-      const dtstart = ev.match(/DTSTART(?:;VALUE=DATE)?(?:;TZID=[^:]+)?:(\d{8})/);
-      const dtend   = ev.match(/DTEND(?:;VALUE=DATE)?(?:;TZID=[^:]+)?:(\d{8})/);
-      if (dtstart && dtend) {
-        ranges.push({ start: dtstart[1], end: dtend[1] });
-      }
+    var ranges=[]; var events=text.split('BEGIN:VEVENT'); events.shift();
+    for (var i=0;i<events.length;i++) {
+      var ds=events[i].match(/DTSTART(?:;VALUE=DATE)?(?:;TZID=[^:]+)?:(\d{8})/);
+      var de=events[i].match(/DTEND(?:;VALUE=DATE)?(?:;TZID=[^:]+)?:(\d{8})/);
+      if (ds&&de) ranges.push({start:ds[1],end:de[1]});
     }
     return ranges;
   }
 
   function toYMD(d) {
-    const m = String(d.getMonth()+1).padStart(2,'0');
-    const dd = String(d.getDate()).padStart(2,'0');
-    return '' + d.getFullYear() + m + dd;
+    return ''+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
   }
 
-  function isBooked(ymd) {
-    for (const r of bookedRanges) {
-      if (ymd > r.start && ymd < r.end) return true;
-    }
-    return false;
+  function ymdToDisplay(ymd) {
+    var d=new Date(+ymd.slice(0,4),+ymd.slice(4,6)-1,+ymd.slice(6,8));
+    return d.getDate()+' '+MONTHS[d.getMonth()].slice(0,3)+' '+d.getFullYear();
   }
 
-  function isCheckin(ymd) {
-    for (const r of bookedRanges) {
-      if (ymd === r.start) return true;
-    }
-    return false;
+  function isBooked(y)   { for(var i=0;i<bookedRanges.length;i++){if(y>bookedRanges[i].start&&y<bookedRanges[i].end)return true;}return false; }
+  function isCheckin(y)  { for(var i=0;i<bookedRanges.length;i++){if(y===bookedRanges[i].start)return true;}return false; }
+  function isCheckout(y) { for(var i=0;i<bookedRanges.length;i++){if(y===bookedRanges[i].end)return true;}return false; }
+
+  function isRangeFree(from,to) {
+    var d=new Date(+from.slice(0,4),+from.slice(4,6)-1,+from.slice(6,8));
+    d.setDate(d.getDate()+1);
+    while(true){var y=toYMD(d);if(y>=to)break;if(isBooked(y)||isCheckin(y))return false;d.setDate(d.getDate()+1);}
+    return true;
   }
 
-  function isCheckout(ymd) {
-    for (const r of bookedRanges) {
-      if (ymd === r.end) return true;
-    }
-    return false;
-  }
-
-  function renderMonth(year, month) {
-    const label = document.getElementById('cal-label');
-    const grid  = document.getElementById('cal-grid');
-    label.textContent = MONTHS[month] + ' ' + year;
-    grid.innerHTML = '';
-
-    for (const d of DAYS) {
-      const h = document.createElement('div');
-      h.textContent = d;
-      h.style.cssText = 'font-size:0.75rem;font-weight:600;color:#888;padding:4px 0;';
+  function renderMonth(year,month) {
+    var label=document.getElementById('cal-label');
+    var grid=document.getElementById('cal-grid');
+    label.textContent=MONTHS[month]+' '+year;
+    grid.innerHTML='';
+    for(var i=0;i<DAYS.length;i++){
+      var h=document.createElement('div');
+      h.textContent=DAYS[i];
+      h.style.cssText='font-size:0.75rem;font-weight:600;color:#888;padding:4px 0;';
       grid.appendChild(h);
     }
+    var first=new Date(year,month,1);
+    var startOffset=(first.getDay()+6)%7;
+    var daysInMonth=new Date(year,month+1,0).getDate();
+    var today=toYMD(new Date());
+    for(var i=0;i<startOffset;i++) grid.appendChild(document.createElement('div'));
 
-    const first = new Date(year, month, 1);
-    let startOffset = (first.getDay() + 6) % 7;
-    const daysInMonth = new Date(year, month+1, 0).getDate();
-    const today = toYMD(new Date());
+    for(var day=1;day<=daysInMonth;day++) {
+      var ymd=toYMD(new Date(year,month,day));
+      var cell=document.createElement('div');
+      cell.textContent=day;
+      cell.style.cssText='padding:7px 4px;border-radius:4px;font-size:0.9rem;position:relative;overflow:hidden;transition:opacity 0.1s;';
+      var isPast=ymd<today;
+      var bookedDay=isBooked(ymd);
+      var checkinDay=isCheckin(ymd);
+      var checkoutDay=isCheckout(ymd);
+      var inRange=selCheckin&&selCheckout&&ymd>selCheckin&&ymd<selCheckout;
+      var isSelCI=ymd===selCheckin;
+      var isSelCO=ymd===selCheckout;
 
-    for (let i = 0; i < startOffset; i++) {
-      grid.appendChild(document.createElement('div'));
-    }
+      if(isPast){cell.style.background='#eeebe6';cell.style.color='#bbb';}
+      else if(bookedDay||(checkinDay&&checkoutDay)){cell.style.background='#c0a89a';cell.style.color='#fff';cell.title='Gereserveerd';}
+      else if(checkinDay){cell.style.background='linear-gradient(135deg,#d4e8d0 50%,#c0a89a 50%)';cell.style.color='#2d4a29';cell.title='Incheckdag';}
+      else if(checkoutDay){cell.style.background='linear-gradient(135deg,#c0a89a 50%,#d4e8d0 50%)';cell.style.color='#2d4a29';cell.title='Uitcheckdag';}
+      else{cell.style.background='#d4e8d0';cell.style.color='#2d4a29';cell.style.border='1px solid #b8d4b3';cell.title='Beschikbaar';}
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      const ymd  = toYMD(date);
-      const cell = document.createElement('div');
-      cell.textContent = day;
-      cell.style.cssText = 'padding:7px 4px;border-radius:4px;font-size:0.9rem;';
+      if(isSelCI||isSelCO){cell.style.background='#B8965A';cell.style.color='#fff';cell.style.border='2px solid #9A7A44';cell.style.fontWeight='700';}
+      else if(inRange){cell.style.background='#cde3c9';cell.style.border='none';}
 
-      if (ymd < today) {
-        cell.style.background = '#eeebe6';
-        cell.style.color = '#bbb';
-      } else if (isBooked(ymd)) {
-        cell.style.background = '#c0a89a';
-        cell.style.color = '#fff';
-        cell.title = 'Gereserveerd';
-      } else if (isCheckin(ymd)) {
-        cell.style.background = 'linear-gradient(135deg, #d4e8d0 50%, #c0a89a 50%)';
-        cell.style.color = '#2d4a29';
-        cell.title = 'Incheckdag';
-      } else if (isCheckout(ymd)) {
-        cell.style.background = 'linear-gradient(135deg, #c0a89a 50%, #d4e8d0 50%)';
-        cell.style.color = '#2d4a29';
-        cell.title = 'Uitcheckdag';
-      } else {
-        cell.style.background = '#d4e8d0';
-        cell.style.color = '#2d4a29';
-        cell.style.border = '1px solid #b8d4b3';
-        cell.title = 'Beschikbaar';
+      if(!isPast&&!bookedDay&&!(checkinDay&&checkoutDay)){
+        cell.style.cursor='pointer';
+        cell.addEventListener('mouseenter',function(){this.style.opacity='0.75';});
+        cell.addEventListener('mouseleave',function(){this.style.opacity='1';});
+        (function(y){cell.addEventListener('click',function(){handleDayClick(y);})})(ymd);
       }
       grid.appendChild(cell);
     }
+    updateStrip();
+  }
+
+  function handleDayClick(ymd) {
+    if(!selCheckin||(selCheckin&&selCheckout)){selCheckin=ymd;selCheckout=null;}
+    else if(ymd<=selCheckin){selCheckin=ymd;selCheckout=null;}
+    else{if(isRangeFree(selCheckin,ymd)){selCheckout=ymd;}else{selCheckin=ymd;selCheckout=null;}}
+    renderMonth(currentYear,currentMonth);
+  }
+
+  function updateStrip() {
+    var strip=document.getElementById('cal-selection-strip');
+    var hint=document.getElementById('cal-hint');
+    if(!strip) return;
+    if(selCheckin&&selCheckout) {
+      strip.style.display='block';
+      strip.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;"><div><span style="font-size:0.73rem;color:var(--grijs);text-transform:uppercase;letter-spacing:0.07em;display:block;margin-bottom:0.2rem;">Jouw selectie</span><span style="font-weight:600;color:var(--antraciet);">'+ymdToDisplay(selCheckin)+' &rarr; '+ymdToDisplay(selCheckout)+'</span></div><button id="cal-book-btn" class="btn btn--primary btn--sm" style="white-space:nowrap;">Boek deze data →</button></div>';
+      document.getElementById('cal-book-btn').addEventListener('click',fillAndScroll);
+      if(hint) hint.textContent='';
+    } else if(selCheckin) {
+      strip.style.display='block';
+      strip.innerHTML='<span style="font-size:0.88rem;color:var(--grijs);">Aankomst: <strong>'+ymdToDisplay(selCheckin)+'</strong> — selecteer nu je vertrekdatum</span>';
+      if(hint) hint.textContent='';
+    } else {
+      strip.style.display='none';
+      if(hint) hint.textContent='Klik op een beschikbare datum om je aankomst te selecteren.';
+    }
+  }
+
+  function fillAndScroll() {
+    var ci=document.getElementById('checkin'); var co=document.getElementById('checkout');
+    if(ci&&selCheckin)  ci.value=selCheckin.slice(0,4)+'-'+selCheckin.slice(4,6)+'-'+selCheckin.slice(6,8);
+    if(co&&selCheckout) co.value=selCheckout.slice(0,4)+'-'+selCheckout.slice(4,6)+'-'+selCheckout.slice(6,8);
+    var form=document.getElementById('booking-form');
+    if(form) form.scrollIntoView({behavior:'smooth',block:'start'});
+    setTimeout(function(){var n=document.getElementById('name');if(n&&!n.value)n.focus();},700);
   }
 
   function init() {
-    document.getElementById('cal-status').textContent = 'Laden…';
+    document.getElementById('cal-status').textContent='Laden…';
     fetch('/api/ical')
-      .then(r => r.text())
-      .then(text => {
-        bookedRanges = parseIcal(text);
-        document.getElementById('cal-status').textContent = '';
-        renderMonth(currentYear, currentMonth);
-      })
-      .catch(() => {
-        document.getElementById('cal-status').textContent = 'Kalender niet beschikbaar — stuur ons een e-mail voor beschikbaarheid.';
-        renderMonth(currentYear, currentMonth);
-      });
-
-    document.getElementById('cal-prev').addEventListener('click', () => {
-      currentMonth--;
-      if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-      renderMonth(currentYear, currentMonth);
-    });
-    document.getElementById('cal-next').addEventListener('click', () => {
-      currentMonth++;
-      if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-      renderMonth(currentYear, currentMonth);
-    });
+      .then(function(r){return r.text();})
+      .then(function(text){bookedRanges=parseIcal(text);document.getElementById('cal-status').textContent='';renderMonth(currentYear,currentMonth);})
+      .catch(function(){document.getElementById('cal-status').textContent='Kalender niet beschikbaar — stuur ons een e-mail voor beschikbaarheid.';renderMonth(currentYear,currentMonth);});
+    document.getElementById('cal-prev').addEventListener('click',function(){currentMonth--;if(currentMonth<0){currentMonth=11;currentYear--;}renderMonth(currentYear,currentMonth);});
+    document.getElementById('cal-next').addEventListener('click',function(){currentMonth++;if(currentMonth>11){currentMonth=0;currentYear++;}renderMonth(currentYear,currentMonth);});
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
 })();
 </script>
 
